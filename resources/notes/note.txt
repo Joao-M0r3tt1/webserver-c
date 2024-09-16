@@ -1,0 +1,28 @@
+--- HTTP Webserver
+
+Part 1: Accepting connections
+
+- Servidor modular
+- função fork(): poder receber várias conexões ao mesmo tempo
+- método para servir páginas web (desconectar a parte entre a URL 'ex.: http://www.google.se/file' e a parte do arquivo presente nela. Para isso utilizar rotas)
+
+folder - `http-d` --> d: daemon (name for a server software)
+	- Um daemon, frequentemente chamado de HTTPD, que executa em um servidor Web e realiza o processo de esperar por uma solicitação HTTP, decodificar a solicitação, obter qualquer informação necessária pela solicitação, como dados mantidos em um banco de dados, executar a solicitação, iniciar uma resposta HTTP, fechar a conexão de rede com o cliente que fez a solicitação e, então, ficar ocioso, esperando pela próxima solicitação. É o daemon HTTP que instiga todas as principais funções de um servidor Web.
+	- HTTPD é um programa de software que roda em segundo plano em um servidor Web e aguarda solicitações de entrada do servidor. O daemon responde às solicitações automaticamente e serve os documentos de hipertexto e multimídia pela Internet usando HTTP.
+
+
+fork(): cria uma cópia do programa para que ele seja executado em duas instâncias. Obtemos um valor de retorno do fork :
+
+	- for the main process: return the new process id (ou seja, continuamos o loop e vamos para o próximo cliente)
+	- for the new process: return 0 (ou seja, queremos lidar com a conexão estabelecida)
+
+
+--> Quando o arquivo é executado, lemos a porta que foi pasada pela linha de comando, colocando-a em `port`
+
+--> Executamos a função `srv_init()` que tem a `port` como argumento. Essa irá inicializar o socket, preencher a estrtutura de socket lincando-a com o socket do servidor, irá realizar o `bind()` ligar o socket file descriptor com a etrutura de socket. Por fim, passar a ouvir `listen()`. Retorno -1 para qualquer erro e o erro decorrente, caso ocorra tudo bem, retorna o sock_fd.
+
+--> na função principal iniciar um loop para conexões que serao recebidas/clientes, chamando a função `cli_accept()`
+
+--> aceita as conexões pela função accept() se tudo ocorrer bem, retorna um novo decritor de arquivo do cliente. Se não houver conexão exibe um erro, e continua para o proximo ciclo do loop buscando outtro cliente. Se funcionar irá bifurcar `fork()` e a nova instancia do programa executará a função `cli_connect`
+
+--> qualquer retorno ruim, é armazenado na variavel global `error` e ese erro é exibido na função principal, caso ocorra
