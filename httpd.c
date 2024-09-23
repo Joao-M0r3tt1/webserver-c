@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include <netinet/in.h>
 
 #define LISTENADDR "0.0.0.0"    // server listens to all interfaces   
 /* 0.0.0.0 - listens to all interfaces, if you don't have a firewall for protection, use the localhost IP - 127.0.0.1 */
@@ -68,7 +69,7 @@ int cli_accept(int srv_fd) {
 		error = "accept() error! Server accept failed!";
 		close(sock_fd);    // close the socket
 		return -1;
-}
+	}
 
 	return sock_fd;    // return the client socket descriptor
 }
@@ -126,10 +127,50 @@ char *client_read(int client) {
 	return buffer;    // returns buffer read
 }
 
+/* response data based on the request */
+void http_response(int client, char *content_type, char *data) {
+	char buffer[512];    // response data
+	int length = strlen(data); // response length
+
+	memset(buffer, 0, 512);
+
+	snprintf(buffer, 511,
+		"Content-Type: %s\n"
+		"Content-Length: %d\n"
+		"\n%s\n",
+		content_type, length, data);    // response data
+
+	length = strlen(buffer);
+	write(client, buffer, length);    // response the answer
+
+	return;
+}
+
+/* response header structure */
+void http_headers(int client, int code) {
+	char buffer[512];    // response header data
+	int length;    // response header length
+
+	memset(buffer, 0, 512);
+
+	snprintf(buffer, 511,
+		"HTTP/1.0 %d OK HTTP Status\n"
+		"Server: httpd.c\n"
+		"Cache-Control: no-store\n"
+		"Content-Language: en\n"
+		"X-Frame-Options: SAMEORIGIN\n",
+		code);    // response header
+
+	length = strlen(buffer);
+	write(client, buffer, length);    // response the answer
+
+	return;
+}
+
 /* manage client connection */
 void client_connection(int server, int client) {
         httpreq *request;    // pointer to the request
-        char buffer[512], *pointer;    // read data
+        char *pointer, *response;    // read data
 
 	/* read client data and check for errors */
         pointer = client_read(client); 
@@ -147,7 +188,18 @@ void client_connection(int server, int client) {
                 return;
         }
 
-        printf("%s\n%s\n", request->method, request->url);    // display method and URL
+	/* check if the request is valid | static verification - test */
+	if(!strcmp(request->method, "GET") && !strcmp(request->url, "/app/webpage")) {
+		response = "<html>Hello world</html>";
+		http_headers(client, 200);    // everything okay
+		http_response(client, "text/html", response);
+	} else {
+		response = "<html>File Not Found</html>";
+		http_headers(client, 404);    // file not found
+		http_response(client, "text/plain", response);
+		
+	}
+
         free(request);    // free up memory
         close(client);    // close socket
 
@@ -156,8 +208,8 @@ void client_connection(int server, int client) {
 
 /* main function | returns -1 on error */
 int main(int argc, char *argv[]) {
-	int server_fd, client_fd;    /* server and client socket file descriptor */
-	char *port;    /* port for connection */
+	int server_fd, client_fd;    // server and client socket file descriptor
+	char *port;    // port for connection
 
 	/* checks if port was passed as argument */
 	if(argc < 2) {
